@@ -10,35 +10,63 @@ Two mini PCs run KVM/libvirt and connect to the home router over Wi-Fi only.
 Wi-Fi interfaces can't be bridged, so each host gets its own **routed** libvirt
 network with a dedicated VM subnet, instead of putting VMs directly on the home LAN.
 
+
 ```mermaid
+---
+title: Kubernetes Homelab — Network Topology
+---
 flowchart TB
-    router["Home router<br/>192.168.18.0/24"]
-
-    subgraph kvm1["kvm1 — 192.168.18.201"]
-        gw1["virbr gateway 10.10.1.1"]
-        w1["worker1<br/>10.10.1.11"]
-        w2["worker2<br/>10.10.1.12"]
-        gw1 --- w1
-        gw1 --- w2
+    router["<b>Home Router</b><br/>192.168.18.0/24"]
+ 
+    subgraph kvm1["<b>KVM1 · 192.168.18.201</b>"]
+        
+        direction TB
+        gw1["<b>libvirt Virtual Gateway</b><br/>10.10.1.1"]
+        subgraph net1["<b>VM Subnet · 10.10.1.0/24</b>"]
+            direction LR
+            w1["<b>Worker 1</b><br/> 10.10.1.11"]
+            w2["<b>Worker 2</b><br/> 10.10.1.12"]
+        end
+        gw1 --> net1
     end
-
-    subgraph kvm2["kvm2 — 192.168.18.202"]
-        gw2["virbr gateway 10.10.2.1"]
-        cp1["cp1<br/>10.10.2.10"]
-        gw2 --- cp1
+ 
+    subgraph kvm2["<b>KVM2 · 192.168.18.202</b>"]
+        direction TB
+        gw2["<b>libvirt Virtual Gateway</b><br/>10.10.2.1"]
+        subgraph net2["<b>VM Subnet · 10.10.2.0/24</b>"]
+            cp1["<b>Control Plane</b><br/> 10.10.2.10"]
+        end
+        gw2 --> net2
     end
-
-    router -. Wi-Fi .- kvm1
-    router -. Wi-Fi .- kvm2
-    kvm1 <-- "host-to-host routes" --> kvm2
+ 
+    router -. "Wi-Fi" .- kvm1
+    router -. "Wi-Fi" .- kvm2
+    kvm1 <-. "Static routes" .-> kvm2
+ 
+    classDef routerStyle fill:#1e293b,stroke:#64748b,stroke-width:2px,color:#f1f5f9
+    classDef gatewayStyle fill:#3d2f1c,stroke:#f0b54a,stroke-width:2px,color:#f1f5f9
+    classDef vmStyle fill:#163a30,stroke:#34d399,stroke-width:2px,color:#f1f5f9
+ 
+    class router routerStyle
+    class gw1,gw2 gatewayStyle
+    class w1,w2,cp1 vmStyle
+ 
+    style kvm1 fill:#111c2e,stroke:#64748b,stroke-width:2px,color:#f1f5f9
+    style kvm2 fill:#111c2e,stroke:#64748b,stroke-width:2px,color:#f1f5f9
+    style net1 fill:#0f2e2a,stroke:#2dd4bf,stroke-width:2px,color:#f1f5f9
+    style net2 fill:#0f2e2a,stroke:#2dd4bf,stroke-width:2px,color:#f1f5f9
+ 
+    linkStyle 0,1 stroke:#f0b54a,stroke-width:2px
+    linkStyle 2,3,4 stroke:#60a5fa,stroke-width:2px
 ```
+
 
 ## Physical hosts
 
 | Host | IP |  CPU | RAM |
 |------|----|-----|-----|
-| kvm1 | 192.168.18.201 |  24 vCPU (AMD-V) | 27 GiB |
-| kvm2 | 192.168.18.202 |  12 vCPU (AMD-V) | 28 GiB |
+| kvm1 | 192.168.18.201 |  24 vCPU  | 27 GiB |
+| kvm2 | 192.168.18.202 |  12 vCPU  | 28 GiB |
 
 ## VM networks (libvirt, routed mode)
 
@@ -101,7 +129,3 @@ None of these ranges overlap:
 - **VM internet egress:** the router can't route replies to 10.10.x.x, so each host must
   masquerade VM traffic leaving for the internet. Exclude these destinations from NAT:
   10.10.0.0/16, 10.244.0.0/16, 10.96.0.0/12.
-- **Wi-Fi MAC randomization:** both hosts currently use randomized Wi-Fi MACs. If
-  NetworkManager generates a new one, the router reservation won't match and the host
-  IP may change. Fix: set `802-11-wireless.cloned-mac-address permanent` and point the
-  reservations at the hardware MACs.
