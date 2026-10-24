@@ -1,0 +1,17 @@
+---
+- name: Verify connectivity and privilege escalation
+  hosts: hypervisors
+  gather_facts: false
+  tasks:
+    - name: Check SSH and Python
+      ansible.builtin.ping:
+
+    - name: Check effective user
+      ansible.builtin.command: whoami
+      register: whoami_result
+      changed_when: false
+
+    - name: Assert become escalated to root
+      ansible.builtin.assert:
+        that: whoami_result.stdout == "root"
+        fail_msg: "become did not escalate to root on {{ inventory_hostname }}"
