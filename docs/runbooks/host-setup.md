@@ -18,7 +18,7 @@ enable libvirt's modular daemons, and confirm `virsh` works.
 ## Prerequisites
 
 - Both hosts run the same Fedora release. Mismatched releases mean mismatched
-  libvirt and QEMU versions, which may cause problems later
+  libvirt and QEMU versions, which may causes problems later.
 - Ansible can reach both hosts as the `ansible` user, with passwordless sudo.
 - `become=True` is set in `ansible.cfg`, so the playbook runs tasks as root.
 
@@ -41,12 +41,11 @@ ansible hypervisors -m setup -a "filter=ansible_distribution*"
 Target the `hypervisors` group, not `all`. The `all` group includes cluster VMs
 that may not exist yet, and they would show as unreachable.
 
-The `shell` check reports `CHANGED` even though they only read. Ansible can't tell
-what a shell command did. Nothing on the host is modified.
 
 ## Run
 
 ```bash
+ansible-playbook ansible/playbooks/hypervisors/install-virtualisation.yml --syntax-check
 ansible-playbook ansible/playbooks/hypervisors/install-virtualisation.yml
 ```
 
@@ -69,7 +68,7 @@ and the recap shows `failed=0`.
 
 ### Sockets
 
-libvirt runs as modular daemons, one per job. Each daemon is started
+libvirt runs as modular daemons, one per job (see ADR 0001). Each daemon is started
 on demand by a systemd socket, so the playbook enables the sockets rather than the
 daemons. A daemon only runs while something is talking to it.
 
@@ -111,3 +110,6 @@ before moving on.
 - **Existing libvirt network on kvm1.** The `default` network (`192.168.122.0/24`) is
   in use by the pre-existing VMs. Project VM subnets must not overlap with it.
 
+## Related
+
+- `network.md`: IP plan (source of truth for host and VM subnets)
