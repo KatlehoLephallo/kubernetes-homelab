@@ -1,0 +1,32 @@
+---
+- name: Install Virtualisation Packages and enable services
+  hosts: hypervisors
+
+  tasks:
+    - name: Install Virtualisation Packages
+      ansible.builtin.dnf:
+        name:
+          - qemu-kvm
+          - libvirt
+          - libvirt-client
+          - virt-install
+          - python3-libvirt
+        state: present
+
+    - name: Enable and start libvirt modular daemon sockets
+      ansible.builtin.systemd_service:
+        name: "{{ item }}"
+        enabled: true
+        state: started
+      loop:
+        - virtqemud.socket
+        - virtnetworkd.socket
+        - virtstoraged.socket
+        - virtnodedevd.socket
+        - virtsecretd.socket
+        - virtnwfilterd.socket
+
+    - name: Verify libvirt responds
+      ansible.builtin.command: virsh --connect qemu:///system list --all
+      register: virsh_list
+      changed_when: false
