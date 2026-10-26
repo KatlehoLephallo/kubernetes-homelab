@@ -2,3 +2,4 @@
 host_ip: 192.168.18.201
 vm_subnet: 10.10.1.0/24
 vm_gateway: 10.10.1.1
+vm_uplink: wlp98s0
