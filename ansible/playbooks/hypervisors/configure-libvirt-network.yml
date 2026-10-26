@@ -1,0 +1,36 @@
+---
+- name: Configure routed libvirt network for VMs
+  hosts: hypervisors
+
+  tasks:
+    - name: Install libvirt Python bindings needed by community.libvirt
+      ansible.builtin.dnf:
+        name:
+          - python3-libvirt
+          - python3-lxml
+        state: present
+
+    - name: Enable IPv4 forwarding persistently
+      ansible.posix.sysctl:
+        name: net.ipv4.ip_forward
+        value: "1"
+        sysctl_file: /etc/sysctl.d/90-ip-forward.conf
+        state: present
+        sysctl_set: true
+        reload: true
+
+    - name: Define k8s-net from template
+      community.libvirt.virt_net:
+        command: define
+        name: k8s-net
+        xml: "{{ lookup('template', playbook_dir ~ '/../../templates/k8s-net.xml.j2') }}"
+
+    - name: Start k8s-net
+      community.libvirt.virt_net:
+        name: k8s-net
+        state: active
+
+    - name: Autostart k8s-net on boot
+      community.libvirt.virt_net:
+        name: k8s-net
+        autostart: true

@@ -1,0 +1,11 @@
+{% set net_base = vm_gateway.rsplit('.', 1)[0] %}
+<network>
+  <name>k8s-net</name>
+  <forward mode='route' dev='{{ vm_uplink }}'/>
+  <bridge name='virbr-k8s' stp='on' delay='0'/>
+  <ip address='{{ vm_gateway }}' prefix='{{ vm_subnet.split("/")[1] }}'>
+    <dhcp>
+      <range start='{{ net_base }}.100' end='{{ net_base }}.199'/>
+    </dhcp>
+  </ip>
+</network>
