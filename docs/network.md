@@ -70,10 +70,12 @@ flowchart TB
 
 ## VM networks (libvirt, routed mode)
 
-| Host | Subnet | Gateway (host bridge) |
-|------|--------|-----------------------|
-| kvm1 | 10.10.1.0/24 | 10.10.1.1 |
-| kvm2 | 10.10.2.0/24 | 10.10.2.1 |
+| Host | Subnet | Gateway (host bridge) | DHCP range | Static range |
+|------|--------|-----------------------|------------|--------------|
+| kvm1 | 10.10.1.0/24 | 10.10.1.1 | 10.10.1.100 – 10.10.1.199 | 10.10.1.2 – 10.10.1.99 |
+| kvm2 | 10.10.2.0/24 | 10.10.2.1 | 10.10.2.100 – 10.10.2.199 | 10.10.2.2 – 10.10.2.99 |
+
+Cluster nodes use static IPs from the static range
 
 ## Cluster nodes
 
