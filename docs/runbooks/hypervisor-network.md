@@ -3,8 +3,7 @@
 ## Purpose
 
 Each hypervisor gets a routed libvirt network called `k8s-net`. Kubernetes VMs attach
-to it and get addresses from that host's VM subnet. Route mode (rather than NAT or a
-bridge onto the LAN) is used because the hosts are Wi-Fi only: Wi-Fi interfaces can't
+to it and get addresses from that host's VM subnet. Route mode is used because the hosts are Wi-Fi only: Wi-Fi interfaces can't
 be bridged, and routing keeps each VM's real 10.10.x.x address visible to the other host.
 
 Addresses come from [`docs/network.md`](../network.md), which is the source of truth.
@@ -137,7 +136,7 @@ else on the host needs it (the libvirt `default` network also relies on forwardi
 | Forwarding task reports `changed` on one host only | That host's forwarding setting came from a different file or formatting. Find duplicates with `grep -rs ip_forward /etc/sysctl.conf /etc/sysctl.d/` and keep only the Ansible-managed file. (Seen on kvm2 on the first run.) |
 | `virt_net` fails with an import error | `python3-libvirt` or `python3-lxml` missing on the host. |
 | Network fails to start | Usually a wrong `vm_uplink` interface name. Check with `ip -br link` on the host. |
-| `libvirt failure` | My systems for some reason don't keep the libvirt service on. So I have to start them every reboot using `ansible/playbooks/hypervisors/install-virtualisation.yml` playbook |
+
 
 ## Known follow-ups
 
