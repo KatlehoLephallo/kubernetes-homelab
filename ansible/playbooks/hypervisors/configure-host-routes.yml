@@ -20,3 +20,4 @@
   handlers:
     - name: Reapply network connection
       ansible.builtin.command: nmcli device reapply "{{ vm_uplink }}"
+      changed_when: true
