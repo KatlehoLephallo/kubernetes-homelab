@@ -9,9 +9,7 @@
       changed_when: false
 
     - name: Add route to each other hypervisor's VM subnet
-      ansible.builtin.command: >
-        nmcli connection modify "{{ wifi_profile }}"
-        +ipv4.routes "{{ hostvars[item].vm_subnet }} {{ hostvars[item].host_ip }}"
+      ansible.builtin.command: nmcli connection modify "{{ wifi_profile }}" +ipv4.routes "{{ hostvars[item].vm_subnet }} {{ hostvars[item].host_ip }}"
       loop: "{{ groups['hypervisors'] | difference([inventory_hostname]) }}"
       when: (hostvars[item].vm_subnet ~ ' ' ~ hostvars[item].host_ip) not in current_routes.stdout
       changed_when: true
