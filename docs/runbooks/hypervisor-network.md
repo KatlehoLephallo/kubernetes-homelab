@@ -30,9 +30,8 @@ Addresses come from [`docs/network.md`](../network.md), which is the source of t
 
 ### Purpose
 
-Each hypervisor gets a routed libvirt network called `k8s-net`. Kubernetes VMs attach
-to it and get addresses from that host's VM subnet. Route mode (rather than NAT or a
-bridge onto the LAN) is used because the hosts are Wi-Fi only: Wi-Fi interfaces can't
+Each hypervisor gets a routed libvirt network called `k8s-net`. VMs attach
+to it and get addresses from that host's VM subnet. Route mode is used because the hosts are Wi-Fi only: Wi-Fi interfaces can't
 be bridged, and routing keeps each VM's real 10.10.x.x address visible to the other host.
 
 ### Files involved
@@ -40,7 +39,7 @@ be bridged, and routing keeps each VM's real 10.10.x.x address visible to the ot
 | File | Role |
 |------|------|
 | `ansible/templates/k8s-net.xml.j2` | Network definition template |
-| `ansible/inventory/host_vars/kvm1.yml`, `kvm2.yml` | Per-host values: `vm_subnet`, `vm_gateway`, `vm_uplink` |
+| `ansible/inventory/host_vars/kvm1.yml`, `kvm2.yml` | hosts values |
 | `ansible/playbooks/hypervisors/configure-libvirt-network.yml` | Applies the network to both hypervisors |
 
 ### The network template explained
@@ -118,27 +117,13 @@ ansible hypervisors -a "ip -br addr show virbr-k8s"
 
 The bridge IPs should be there straight after boot, with no `virsh` command run first.
 
-### Changing the network
-
-Edit `docs/network.md` first, then the host_vars or template, then rerun the playbook.
-libvirt only applies a changed definition when the network restarts:
-
-```bash
-ansible hypervisors -a "virsh net-destroy k8s-net"
-ansible hypervisors -a "virsh net-start k8s-net"
-```
-
-VMs attached to `k8s-net` lose connectivity while it is down.
-
-### Rollback
+### Rollback?
 
 ```bash
 ansible hypervisors -a "virsh net-destroy k8s-net"
 ansible hypervisors -a "virsh net-undefine k8s-net"
 ```
 
-Forwarding stays enabled. Remove `/etc/sysctl.d/90-ip-forward.conf` too only if nothing
-else on the host needs it (the libvirt `default` network also relies on forwarding).
 
 ### Troubleshooting
 
@@ -146,12 +131,9 @@ else on the host needs it (the libvirt `default` network also relies on forwardi
 |---------|-------------|
 | `virbr-k8s` shows `DOWN` / `linkdown` | Normal while no VM is attached. The IP is what matters. |
 | Bridge missing after boot, appears once `virsh` is run | `virtnetworkd.service` isn't enabled, so nothing starts libvirt at boot. Enabling only the sockets isn't enough for autostart. Fixed in `install-virtualisation.yml` (see `host-setup.md`). |
-| Ad-hoc `virsh` / `ip` commands report `CHANGED` | Normal for the `command` module, which can't tell whether a command changed anything. |
 | Forwarding task reports `changed` on one host only | That host's forwarding setting came from a different file or formatting. Find duplicates with `grep -rs ip_forward /etc/sysctl.conf /etc/sysctl.d/` and keep only the Ansible-managed file. (Seen on kvm2 on the first run.) |
-| Play does nothing, warning "no hosts matched" | The play targets `hypervisors`; check the group name in `inventory.ini`. Confirm with `--list-hosts`. |
 | `virt_net` fails with an import error | `python3-libvirt` or `python3-lxml` missing on the host. |
 | Network fails to start | Usually a wrong `vm_uplink` interface name. Check with `ip -br link` on the host. |
-| Host doesn't come back after reboot | Wi-Fi credentials may be stored per user instead of system-wide in NetworkManager, so the host can't connect until someone logs in. |
 
 ---
 
@@ -161,8 +143,7 @@ else on the host needs it (the libvirt `default` network also relies on forwardi
 
 Each host knows its own VM subnet and the home LAN. Anything else goes to the home
 router, which doesn't know where 10.10.x.x is and doesn't support static routes. So
-each host needs a route telling it to send the other host's VM subnet to that host's
-Wi-Fi IP. The other host then forwards the traffic onto its own `k8s-net` bridge.
+each host needs a route telling it to send the other host's VM subnet to that host's IP. The other host then forwards the traffic onto its own `k8s-net` bridge.
 
 | Host | Route |
 |------|-------|
@@ -171,7 +152,7 @@ Wi-Fi IP. The other host then forwards the traffic onto its own `k8s-net` bridge
 
 Both routes are needed: one carries traffic there, the other carries replies back.
 This works because both hosts are on the same LAN and reach each other directly; the
-router only passes Wi-Fi frames between them and never routes 10.10.x.x traffic.
+router only passes info between them and never routes 10.10.x.x traffic.
 
 ### Why NetworkManager, not `ip route add`
 
@@ -184,31 +165,9 @@ them every time the profile connects, including at boot.
 | File | Role |
 |------|------|
 | `ansible/playbooks/hypervisors/configure-host-routes.yml` | Adds the routes to the profile and applies them |
-| `ansible/inventory/host_vars/kvm1.yml`, `kvm2.yml` | `wifi_profile` (profile name), `vm_subnet`, `host_ip`, `vm_uplink` |
+| `ansible/inventory/host_vars/kvm1.yml`, `kvm2.yml` | Contains hosts' variables |
 
-### Before you start: one Wi-Fi profile per host
 
-Routes live on a profile, not an interface. If a host has two profiles for the same
-Wi-Fi network, it can connect with the one that has no routes, and the routes go
-missing after some reboots. Check each host has exactly one, and that it is
-system-wide (empty `permissions`, so it connects at boot without a login):
-
-```bash
-ansible hypervisors -a "nmcli -f NAME,UUID,DEVICE,AUTOCONNECT,AUTOCONNECT-PRIORITY connection show"
-ansible hypervisors -a "nmcli -g connection.permissions connection show home-wifi"
-```
-
-One-time cleanup done in Oct 2026 (kvm1 had a stale duplicate, `SW-1006-9271`,
-alongside the active `SW-1006-9271 1`):
-
-```bash
-# Delete the inactive duplicate by UUID (UUID avoids confusing similar names)
-ansible kvm1 -a "nmcli connection delete <stale-profile-uuid>"
-
-# Rename the active profile on both hosts. Renaming doesn't reconnect the Wi-Fi.
-ansible kvm1 -a "nmcli connection modify <active-profile-uuid> connection.id home-wifi"
-ansible kvm2 -a "nmcli connection modify SW-1006-9271 connection.id home-wifi"
-```
 
 ### How the playbook works
 
@@ -217,7 +176,7 @@ ansible kvm2 -a "nmcli connection modify SW-1006-9271 connection.id home-wifi"
   variables are stored anywhere. A new hypervisor gets routes to and from every other
   host automatically.
 - **It runs `nmcli` through the `command` module**, not `community.general.nmcli`.
-  The module manages the whole Wi-Fi connection (SSID and related settings), and a
+  The module manages the whole Wi-Fi connection and a
   mistake there could cut off the connection Ansible is using. `nmcli connection
   modify ... +ipv4.routes` only touches routes, and `+` adds rather than replaces.
 - **Idempotency is handled by hand.** The playbook reads the routes already saved on
@@ -251,10 +210,10 @@ ansible hypervisors -a "nmcli -g ipv4.routes connection show home-wifi"
 
 Expect `10.10.2.0/24 192.168.18.202` on kvm1 and `10.10.1.0/24 192.168.18.201` on kvm2.
 
-**2. Routes are in the live routing table:**
+**2. Routes should be in the live routing table:**
 
 ```bash
-ansible hypervisors -a "ip route show root 10.10.0.0/16"
+ansible hypervisors -a "ip route show"
 ```
 
 Expected on kvm1 (kvm2 is the mirror):
@@ -297,12 +256,12 @@ is what matters, and it should be 0%.
 
 ```bash
 ansible hypervisors -m ansible.builtin.reboot
-ansible hypervisors -a "ip route show root 10.10.0.0/16"
+ansible hypervisors -a "ip route show"
 ```
 
 Same output as before the reboot, without running Ansible again.
 
-### Removing or changing a route
+### Removing or changing a route?
 
 The playbook only adds routes. To remove one (for example after a subnet change),
 remove it from the profile and reapply:
@@ -312,24 +271,21 @@ ansible kvm1 -a "nmcli connection modify home-wifi -ipv4.routes '10.10.2.0/24 19
 ansible kvm1 -a "nmcli device reapply wlp98s0"
 ```
 
-Then update `docs/network.md` and host_vars, and rerun the playbook to add the new route.
-
 ### Troubleshooting
 
 | Symptom | Cause / fix |
 |---------|-------------|
-| `ip route show 10.10.0.0/16` prints nothing | Without `root`, `ip route show` only matches a route for exactly that prefix. Use `ip route show root 10.10.0.0/16`. |
 | Route is on the profile but not in `ip route` | The change wasn't applied to the live connection. Run `nmcli device reapply <wifi interface>`. |
-| Routes missing after some reboots | The host has a second profile for the same Wi-Fi without the routes. See "Before you start". |
+| Routes missing after some reboots | The host has a second profile for the same Wi-Fi without the routes. |
 | Second playbook run reports `changed` again | `nmcli` is printing the saved route in a different format from the string the playbook checks for. Compare with `nmcli -g ipv4.routes connection show home-wifi`. |
 | Plain ping works, `-I` ping fails | The sending host's route is fine; either the other host's return route is missing or a firewall is blocking the forwarded reply. Check `ip route` on the other host, then firewall rules. |
-| Ping fails entirely | Check `ip route get` on the sending host, and that the other host's bridge exists (`ip -br addr show virbr-k8s`). |
+| Ping fails entirely | Check `ip route get` on the sending host, and that the other host's bridge exists (`ip -br addr show`). |
 
 ### Not yet tested
 
 These checks reach the other host's bridge IP, which the other host answers itself.
 Traffic passing *through* a host to a VM on its bridge can only be tested once VMs
-exist. Do this as part of the VM-creation ticket.
+exist.
 
 ---
 
