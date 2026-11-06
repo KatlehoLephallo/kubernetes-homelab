@@ -38,7 +38,7 @@ be bridged, and routing keeps each VM's real 10.10.x.x address visible to the ot
 
 | File | Role |
 |------|------|
-| `ansible/templates/k8s-net.xml.j2` | Network definition template |
+| `ansible/playbooks/hypervisors/templates/k8s-net.xml.j2` | Network definition template |
 | `ansible/inventory/host_vars/kvm1.yml`, `kvm2.yml` | hosts values |
 | `ansible/playbooks/hypervisors/configure-libvirt-network.yml` | Applies the network to both hypervisors |
 
@@ -73,8 +73,8 @@ becomes `10.10.1`). This assumes a /24 subnet.
 1. Check the template renders correctly for each host (changes nothing on the hosts):
 
    ```bash
-   ansible kvm1 -m debug -a "msg={{ lookup('template', 'ansible/templates/k8s-net.xml.j2') }}"
-   ansible kvm2 -m debug -a "msg={{ lookup('template', 'ansible/templates/k8s-net.xml.j2') }}"
+   ansible kvm1 -m debug -a "msg={{ lookup('template', 'ansible/playbooks/hypervisors/templates/k8s-net.xml.j2') }}"
+   ansible kvm2 -m debug -a "msg={{ lookup('template', 'ansible/playbooks/hypervisors/templates/k8s-net.xml.j2') }}"
    ```
 
 2. Syntax check and run the playbook:

@@ -23,7 +23,7 @@
       community.libvirt.virt_net:
         command: define
         name: k8s-net
-        xml: "{{ lookup('template', playbook_dir ~ '/../../templates/k8s-net.xml.j2') }}"
+        xml: "{{ lookup('template', 'templates/k8s-net.xml.j2') }}"
 
     - name: Start k8s-net
       community.libvirt.virt_net:
