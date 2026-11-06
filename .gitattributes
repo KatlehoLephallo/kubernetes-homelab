@@ -1,0 +1,6 @@
+# Count the Ansible YAML in the language bar
+ansible/**/*.yml   linguist-detectable=true
+ansible/**/*.yaml  linguist-detectable=true
+
+# Leave out installed Galaxy collections (third-party code)
+ansible/collections/ansible_collections/** linguist-vendored
