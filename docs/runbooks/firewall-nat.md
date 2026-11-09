@@ -1,8 +1,5 @@
 # How the VMs reach the internet and home network
 
-- **Status:** Accepted
-- **Date:** 2026-11-09
-- **Ticket:** #7 Configure firewalld forwarding and selective NAT
 
 ## The problem
 
