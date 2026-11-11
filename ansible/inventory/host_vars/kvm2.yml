@@ -4,3 +4,12 @@ vm_subnet: 10.10.2.0/24
 vm_gateway: 10.10.2.1
 vm_uplink: wlp2s0
 wifi_profile: home-wifi
+vms:
+  - name: cp1
+    ip: 10.10.2.10
+    mac: "52:54:00:00:02:11"
+    vcpus: 2
+    vcpus_max: 4
+    memory_mb: 4096
+    memory_max_mb: 8192
+    disk_gb: 30
