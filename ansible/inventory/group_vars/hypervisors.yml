@@ -5,6 +5,8 @@ vm_supernet: 10.10.0.0/16
 fedora_image_url: "https://download.fedoraproject.org/pub/fedora/linux/releases/45/Cloud/x86_64/images/Fedora-Cloud-Base-Generic-45-1.4.x86_64.qcow2"
 fedora_image_checksum: "sha256:50bdc5e70f6a24f540932d15411c1c6ae9fcfa40fb990d876d83c5cc823b2ad0"
 vm_image_dir: /var/lib/libvirt/images
+vm_base_image_dir: "{{ vm_image_dir }}/k8s-base-images"
+vm_base_image: "{{ vm_base_image_dir }}/{{ fedora_image_url | basename }}"
 
 # Guest settings applied by cloud-init
 vm_admin_user: core

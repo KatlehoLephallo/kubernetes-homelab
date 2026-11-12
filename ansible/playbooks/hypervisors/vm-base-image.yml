@@ -1,0 +1,27 @@
+---
+- name: Prepare hypervisors for VM provisioning
+  hosts: hypervisors
+
+  tasks:
+    - name: Install VM provisioning tools
+      ansible.builtin.dnf:
+        name:
+          - virt-install
+          - qemu-img
+          - xorriso
+        state: present
+
+    - name: Create base image directory
+      ansible.builtin.file:
+        path: "{{ vm_base_image_dir }}"
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+
+    - name: Download linux cloud base image
+      ansible.builtin.get_url:
+        url: "{{ fedora_image_url }}"
+        dest: "{{ vm_base_image }}"
+        checksum: "{{ fedora_image_checksum }}"
+        mode: '0444'
