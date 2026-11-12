@@ -1,0 +1,18 @@
+#cloud-config
+
+hostname: {{ vm.name }}
+preserve_hostname: false
+
+# Admin user. Listing users replaces Fedora's default user.
+users:
+  - name: {{ vm_admin_user }}
+    groups: [wheel]
+    sudo: "ALL=(ALL) NOPASSWD:ALL"
+    shell: /bin/bash
+    lock_passwd: true 
+    ssh_authorized_keys:
+      - "{{ vm_ssh_pubkey }}"
+
+
+ssh_pwauth: false
+disable_root: true
