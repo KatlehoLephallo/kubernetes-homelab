@@ -12,7 +12,7 @@ vms:
     vcpus_max: 7
     memory_mb: 8192
     memory_max_mb: 10240
-    disk_gb: 40
+    disk_gb: 50
   - name: worker2
     ip: 10.10.1.12
     mac: "52:54:00:00:01:12"
@@ -20,4 +20,4 @@ vms:
     vcpus_max: 7
     memory_mb: 8192
     memory_max_mb: 10240
-    disk_gb: 40
+    disk_gb: 50
