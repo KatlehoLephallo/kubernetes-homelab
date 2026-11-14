@@ -1,0 +1,55 @@
+---
+- name: Provision cluster VMs
+  hosts: hypervisors
+
+  tasks:
+    - name: List VMs that already exist
+      ansible.builtin.command: virsh list --all --name
+      register: existing_vms
+      changed_when: false
+
+    - name: Empty list of VMs to create
+      ansible.builtin.set_fact:
+        vms_to_create: []
+
+    - name: Add VMs that do not exist into list
+      ansible.builtin.set_fact:
+        vms_to_create: "{{ vms_to_create + [item] }}"
+      loop: "{{ vms }}"
+      when: item.name not in existing_vms.stdout_lines
+      loop_control:
+        label: "{{ item.name }}"
+
+    - name: Create VM folders
+      ansible.builtin.file:
+        path: "{{ vm_image_dir }}/{{ item.name }}/cloud-init"
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+      loop: "{{ vms_to_create }}"
+      loop_control:
+        label: "{{ item.name }}"
+
+    - name: Render cloud-init files
+      ansible.builtin.template:
+        src: "cloud-init/{{ item.1 }}.j2"
+        dest: "{{ vm_image_dir }}/{{ item.0.name }}/cloud-init/{{ item.1 }}"
+        owner: root
+        group: root
+        mode: "0644"
+      vars:
+        vm: "{{ item.0 }}"
+      with_nested:
+        - "{{ vms_to_create }}"
+        - [meta-data, user-data, network-config]
+      loop_control:
+        label: "{{ item.0.name }}/{{ item.1 }}"
+
+    - name: Create VM disk on top of the base image
+      ansible.builtin.command: qemu-img create --format qcow2 --backing-format qcow2 --backing {{ vm_base_image }} {{ vm_image_dir }}/{{ item.name }}/{{ item.name }}.qcow2 {{ item.disk_gb }}G         # noqa: yaml[line-length]
+      args:
+        creates: "{{ vm_image_dir }}/{{ item.name }}/{{ item.name }}.qcow2"
+      loop: "{{ vms_to_create }}"
+      loop_control:
+        label: "{{ item.name }}"
