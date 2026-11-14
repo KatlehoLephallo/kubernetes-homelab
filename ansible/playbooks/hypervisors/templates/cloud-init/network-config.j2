@@ -1,0 +1,14 @@
+# cloud-init static networking.
+version: 2
+ethernets:
+  primary:
+    match:
+      macaddress: "{{ vm.mac }}"
+    dhcp4: false
+    addresses:
+      - {{ vm.ip }}/vm_subnet.split('/')[1] }} #24
+    routes:
+      - to: default
+        via: {{ vm_gateway }}
+    nameservers:
+      addresses: {{ vm_dns_servers | to_json }}

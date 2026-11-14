@@ -1,0 +1,4 @@
+# cloud-init meta-data: tells the VM who it is.
+# NB: instance-id must never change for a VM. If it changes,cloud-init thinks it's a new machine and runs setup again.
+instance-id: {{ vm.name }}
+local-hostname: {{ vm.name }}
