@@ -53,3 +53,12 @@
       loop: "{{ vms_to_create }}"
       loop_control:
         label: "{{ item.name }}"
+
+    - name: Build cloud-init seed ISO
+      ansible.builtin.command: xorriso -as genisoimage -output ../seed.iso -volid cidata -joliet -rock meta-data user-data network-config
+      args:
+        chdir: "{{ vm_image_dir }}/{{ item.name }}/cloud-init"
+        creates: "{{ vm_image_dir }}/{{ item.name }}/seed.iso"
+      loop: "{{ vms_to_create }}"
+      loop_control:
+        label: "{{ item.name }}"
