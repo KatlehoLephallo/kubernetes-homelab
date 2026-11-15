@@ -62,3 +62,23 @@
       loop: "{{ vms_to_create }}"
       loop_control:
         label: "{{ item.name }}"
+
+    - name: Create and start VMs
+      ansible.builtin.command: >-
+        virt-install
+        --name {{ item.name }}
+        --vcpus vcpus={{ item.vcpus }},maxvcpus={{ item.vcpus_max }}
+        --memory memory={{ item.memory_mb }},maxmemory={{ item.memory_max_mb }}
+        --cpu host-passthrough
+        --osinfo fedora-unknown
+        --import
+        --disk path={{ vm_image_dir }}/{{ item.name }}/{{ item.name }}.qcow2,format=qcow2,bus=virtio
+        --disk path={{ vm_image_dir }}/{{ item.name }}/seed.iso,device=cdrom
+        --network network=k8s-net,model=virtio,mac={{ item.mac }}
+        --graphics none
+        --noautoconsole
+        --autostart
+      changed_when: true
+      loop: "{{ vms_to_create }}"
+      loop_control:
+        label: "{{ item.name }}"
