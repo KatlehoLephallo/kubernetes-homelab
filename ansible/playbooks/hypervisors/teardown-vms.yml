@@ -1,0 +1,47 @@
+---
+# Tears down the cluster VMs listed in each host's `vms` list in host_vars.
+# Removes: each VM, its disk, its cloud-init files and its seed ISO.
+# Leaves alone: the base image, the k8s-net network, any other VMs and the hosts.
+# Run with: -e confirm_teardown=yes
+- name: Tear down cluster VMs
+  hosts: hypervisors
+
+  tasks:
+    - name: Stop unless teardown is confirmed
+      ansible.builtin.assert:
+        that:
+          - confirm_teardown | default('no') == 'yes'
+        fail_msg: This deletes cluster VMs and their disks. Run again with -e confirm_teardown=yes to go ahead.
+        success_msg: Teardown confirmed.
+
+    - name: List all VMs on this host
+      ansible.builtin.command: virsh list --all --name
+      register: all_vms
+      changed_when: false
+
+    - name: List running VMs on this host
+      ansible.builtin.command: virsh list --name
+      register: running_vms
+      changed_when: false
+
+    - name: Work out which VMs exist and which are running
+      ansible.builtin.set_fact:
+        vms_present: "{{ vms | map(attribute='name') | select('in', all_vms.stdout_lines) | list }}"
+        vms_running: "{{ vms | map(attribute='name') | select('in', running_vms.stdout_lines) | list }}"
+
+    - name: Empty list of existing and running VMs
+      ansible.builtin.set_fact:
+        vms_present: []
+        vms_running: []
+
+    - name: Add VM names that already exist in libvirt
+      ansible.builtin.set_fact:
+        vms_present: "{{ vms_present + [item.name] }}"
+      loop: "{{ vms }}"
+      when: item.name in all_vms.stdout_lines
+
+    - name: Add VM names that are running in libvirt
+      ansible.builtin.set_fact:
+        vms_running: "{{ vms_running + [item.name] }}"
+      loop: "{{ vms }}"
+      when: item.name in running_vms.stdout_lines
