@@ -58,3 +58,24 @@
       loop: "{{ vms_present }}"
       loop_control:
         loop_var: vm_info
+
+    - name: Check VM folder paths are safe to delete
+      ansible.builtin.assert:
+        that:
+          - vm_image_dir | default('') | length > 0
+          - vm.name | default('') | length > 0
+        fail_msg: Refusing to delete anything. VM image directory or a VM name is empty.
+        quiet: true
+      loop: "{{ vms }}"
+      loop_control:
+        loop_var: vm
+        label: "{{ vm.name | default('(no name)') }}"
+
+    - name: Delete VM folders (disk, seed ISO, cloud-init files)
+      ansible.builtin.file:
+        path: "{{ vm_image_dir }}/{{ vm.name }}"
+        state: absent
+      loop: "{{ vms }}"
+      loop_control:
+        loop_var: vm
+        label: "{{ vm.name }}"
