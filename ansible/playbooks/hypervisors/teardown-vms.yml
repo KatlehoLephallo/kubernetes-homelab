@@ -24,11 +24,6 @@
       register: running_vms
       changed_when: false
 
-    - name: Work out which VMs exist and which are running
-      ansible.builtin.set_fact:
-        vms_present: "{{ vms | map(attribute='name') | select('in', all_vms.stdout_lines) | list }}"
-        vms_running: "{{ vms | map(attribute='name') | select('in', running_vms.stdout_lines) | list }}"
-
     - name: Empty list of existing and running VMs
       ansible.builtin.set_fact:
         vms_present: []
@@ -36,12 +31,30 @@
 
     - name: Add VM names that already exist in libvirt
       ansible.builtin.set_fact:
-        vms_present: "{{ vms_present + [item.name] }}"
+        vms_present: "{{ vms_present + [vm.name] }}"
       loop: "{{ vms }}"
-      when: item.name in all_vms.stdout_lines
+      loop_control:
+        loop_var: vm
+      when: vm.name in all_vms.stdout_lines
 
     - name: Add VM names that are running in libvirt
       ansible.builtin.set_fact:
-        vms_running: "{{ vms_running + [item.name] }}"
+        vms_running: "{{ vms_running + [vm.name] }}"
       loop: "{{ vms }}"
-      when: item.name in running_vms.stdout_lines
+      loop_control:
+        loop_var: vm
+      when: vm.name in running_vms.stdout_lines
+
+    - name: Power off running cluster VMs
+      ansible.builtin.command: virsh destroy {{ vm_info }}
+      changed_when: true
+      loop: "{{ vms_running }}"
+      loop_control:
+        loop_var: vm_info
+
+    - name: Remove cluster VMs from libvirt
+      ansible.builtin.command: virsh undefine {{ vm_info }} --nvram
+      changed_when: true
+      loop: "{{ vms_present }}"
+      loop_control:
+        loop_var: vm_info
