@@ -18,5 +18,13 @@ ssh_pwauth: false
 disable_root: true
 timezone: Africa/Johannesburg
 
+package_update: true
+package_upgrade: true
+package_reboot_if_required: true
+
 packages:
   - python3.14
+  - chrony
+
+runcmd:
+  - systemctl enable --now chronyd

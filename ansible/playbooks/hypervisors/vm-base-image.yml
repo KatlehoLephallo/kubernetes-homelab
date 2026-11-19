@@ -25,3 +25,14 @@
         dest: "{{ vm_base_image }}"
         checksum: "{{ fedora_image_checksum }}"
         mode: '0444'
+
+    - name: Make sure chrony is installed
+      ansible.builtin.command: dnf install -y chrony
+      register: chrony_install
+      changed_when: "'Nothing to do' not in chrony_install.stdout"
+
+    - name: Enable and start chronyd
+      ansible.builtin.systemd_service:
+        name: chronyd
+        enabled: true
+        state: started

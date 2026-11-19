@@ -1,0 +1,13 @@
+---
+- name: Apply OS baseline to Nodes
+  hosts: nodes
+
+  tasks:
+    - name: Add all cluster nodes to /etc/hosts
+      ansible.builtin.blockinfile:
+        path: /etc/hosts
+        marker: "# {mark} --- ANSIBLE MANAGED: cluster nodes ---"
+        block: |
+          {% for node in groups['nodes'] %}
+          {{ hostvars[node].ansible_host }} {{ node }}
+          {% endfor %}
