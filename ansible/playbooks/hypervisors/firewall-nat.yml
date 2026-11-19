@@ -1,0 +1,24 @@
+---
+- name: Configure selective NAT for VM subnets
+  hosts: hypervisors
+
+  tasks:
+    - name: Deploy k8s-vm-nat firewalld policy
+      ansible.builtin.template:
+        src: k8s-vm-nat.xml.j2
+        dest: /etc/firewalld/policies/k8s-vm-nat.xml
+        owner: root
+        group: root
+        mode: "0644"
+      notify: Reload firewalld
+
+  handlers:
+    - name: Check firewalld config
+      ansible.builtin.command: firewall-cmd --check-config
+      changed_when: false
+      listen: Reload firewalld
+
+    - name: Reload firewalld
+      ansible.builtin.command: firewall-cmd --reload
+      changed_when: true
+      listen: Reload firewalld

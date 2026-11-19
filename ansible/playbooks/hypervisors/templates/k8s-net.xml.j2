@@ -1,4 +1,5 @@
 {% set net_base = vm_gateway.rsplit('.', 1)[0] %}
+<!-- {{ ansible_managed }} -->
 <network>
   <name>k8s-net</name>
   <forward mode='route' dev='{{ vm_uplink }}'/>

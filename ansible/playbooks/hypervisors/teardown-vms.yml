@@ -1,0 +1,81 @@
+---
+# Tears down the cluster VMs listed in each host's `vms` list in host_vars.
+# Removes: each VM, its disk, its cloud-init files and its seed ISO.
+# Leaves alone: the base image, the k8s-net network, any other VMs and the hosts.
+# Run with: -e confirm_teardown=yes
+- name: Tear down cluster VMs
+  hosts: hypervisors
+
+  tasks:
+    - name: Stop unless teardown is confirmed
+      ansible.builtin.assert:
+        that:
+          - confirm_teardown | default('no') == 'yes'
+        fail_msg: This deletes cluster VMs and their disks. Run again with -e confirm_teardown=yes to go ahead.
+        success_msg: Teardown confirmed.
+
+    - name: List all VMs on this host
+      ansible.builtin.command: virsh list --all --name
+      register: all_vms
+      changed_when: false
+
+    - name: List running VMs on this host
+      ansible.builtin.command: virsh list --name
+      register: running_vms
+      changed_when: false
+
+    - name: Empty list of existing and running VMs
+      ansible.builtin.set_fact:
+        vms_present: []
+        vms_running: []
+
+    - name: Add VM names that already exist in libvirt
+      ansible.builtin.set_fact:
+        vms_present: "{{ vms_present + [vm.name] }}"
+      loop: "{{ vms }}"
+      loop_control:
+        loop_var: vm
+      when: vm.name in all_vms.stdout_lines
+
+    - name: Add VM names that are running in libvirt
+      ansible.builtin.set_fact:
+        vms_running: "{{ vms_running + [vm.name] }}"
+      loop: "{{ vms }}"
+      loop_control:
+        loop_var: vm
+      when: vm.name in running_vms.stdout_lines
+
+    - name: Power off running cluster VMs
+      ansible.builtin.command: virsh destroy {{ vm_info }}
+      changed_when: true
+      loop: "{{ vms_running }}"
+      loop_control:
+        loop_var: vm_info
+
+    - name: Remove cluster VMs from libvirt
+      ansible.builtin.command: virsh undefine {{ vm_info }} --nvram
+      changed_when: true
+      loop: "{{ vms_present }}"
+      loop_control:
+        loop_var: vm_info
+
+    - name: Check VM folder paths are safe to delete
+      ansible.builtin.assert:
+        that:
+          - vm_image_dir | default('') | length > 0
+          - vm.name | default('') | length > 0
+        fail_msg: Refusing to delete anything. VM image directory or a VM name is empty.
+        quiet: true
+      loop: "{{ vms }}"
+      loop_control:
+        loop_var: vm
+        label: "{{ vm.name | default('(no name)') }}"
+
+    - name: Delete VM folders (disk, seed ISO, cloud-init files)
+      ansible.builtin.file:
+        path: "{{ vm_image_dir }}/{{ vm.name }}"
+        state: absent
+      loop: "{{ vms }}"
+      loop_control:
+        loop_var: vm
+        label: "{{ vm.name }}"

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- {{ ansible_managed }} -->
+<policy target="CONTINUE" priority="-10">
+  <short>k8s-vm-nat</short>
+  <description>Masquerade VM traffic leaving via Wi-Fi, except traffic to other VM subnets.</description>
+  <ingress-zone name="libvirt-routed"/>
+  <egress-zone name="FedoraServer"/>
+  <rule family="ipv4">
+    <source address="{{ vm_subnet }}"/>
+    <destination address="{{ vm_supernet }}" invert="True"/>
+    <masquerade/>
+  </rule>
+</policy>
