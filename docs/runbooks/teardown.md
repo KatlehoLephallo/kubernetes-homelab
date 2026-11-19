@@ -2,8 +2,7 @@
 
 ### What this does
 
-`teardown-vms.yml` removes the cluster VMs (cp1 on kvm2, worker1 and worker2 on kvm1)
-so they can be rebuilt from scratch with `provision-vms.yml`.
+`teardown-vms.yml` removes the cluster VMs so they can be rebuilt from scratch.
 
 Ansible doesn't keep a record of what it created (unlike Terraform's state file),
 so removing things needs its own playbook.
@@ -13,7 +12,7 @@ so removing things needs its own playbook.
 | Each VM (powered off and undefined in libvirt) | The base image in `k8s-base-images` |
 | Its disk (`<vm>.qcow2`) | The `k8s-net` network |
 | Its cloud-init files and `seed.iso` | Static routes and firewall rules |
-| | Any VM not in the `vms` list (e.g. control, vm-2, vm-test on kvm1) |
+| | Any VM not in the `vms` list (NB: find in `kvm1.yml` and `kvm2.yml`) |
 | | The hosts themselves |
 
 ### When to use it
@@ -25,7 +24,7 @@ so removing things needs its own playbook.
 ### Before you start
 
 - **Everything on the VMs is lost.** Nothing on their disks is kept.
-- Once the VMs are Kubernetes nodes, remove them from the cluster first (future ticket).
+- Once the VMs are Kubernetes nodes, remove them from the cluster first.
 
 ### Tear down
 
@@ -35,8 +34,7 @@ The playbook won't run without the confirm flag. It deletes disks, so it shouldn
 ansible-playbook ansible/playbooks/hypervisors/teardown-vms.yml -e confirm_teardown=yes
 ```
 
-Without the flag, it stops on the first task with:
-`This deletes cluster VMs and their disks. Run again with -e confirm_teardown=yes to go ahead.`
+Without the flag, it stops on the first task 
 
 **Healthy result**, from a test run with worker2 already shut off:
 
@@ -47,7 +45,7 @@ Without the flag, it stops on the first task with:
 | Delete VM folders | worker1, worker2 | cp1 |
 
 VMs that are already off are skipped at power off, but still removed.
-**Running it again** gives `changed=0` on both hosts.
+**Running it again** doesn't change anything.
 
 ### Verify the teardown
 
@@ -74,7 +72,7 @@ ansible-playbook ansible/playbooks/hypervisors/provision-vms.yml
 
 Every task should show `changed` on both hosts.
 
-**2. Wait about a minute for cloud-init, then check they're up:**
+**2. Wait about a minute for cloud-init, then check if they're up:**
 
 ```bash
 ansible hypervisors -a "virsh list --all"
@@ -116,8 +114,3 @@ Each should show its own hostname and `status: done`.
 - **Autostart** comes back on with every rebuild, because `provision-vms.yml` sets it.
 - **Storage pool list:** `virsh vol-list default` may still show old disks for a while.
   It's an out-of-date cached list, not real files. The next `virt-install` refreshes it.
-
-### Tested
-
-2026-11-18: full build → teardown (with worker2 shut off) → rebuild, on both hosts.
-All checks above passed, and a second teardown run gave `changed=0`.
