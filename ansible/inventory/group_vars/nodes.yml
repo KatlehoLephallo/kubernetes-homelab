@@ -1,2 +1,3 @@
 ansible_user: core
 ansible_ssh_common_args: "-o ProxyJump=ansible@{{ jump_host }}"
+k8s_version: "1.36"

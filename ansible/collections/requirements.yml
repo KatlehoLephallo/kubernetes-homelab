@@ -1,3 +1,4 @@
 collections:
   - name: community.libvirt
   - name: ansible.posix
+  - name: community.general
