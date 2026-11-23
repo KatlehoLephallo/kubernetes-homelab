@@ -1,0 +1,44 @@
+---
+- name: Configure kernel prerequisites on cluster nodes
+  hosts: nodes
+  gather_facts: false
+
+  tasks:
+    - name: Stop ram swap from being created at boot
+      ansible.builtin.copy:
+        content: ""
+        dest: /etc/systemd/zram-generator.conf
+        owner: root
+        group: root
+        mode: "0644"
+
+    - name: Check for active swap
+      ansible.builtin.command: swapon --show --noheadings
+      register: swap_check
+      changed_when: false
+
+    - name: Disable active swap
+      ansible.builtin.command: swapoff -a
+      when: swap_check.stdout != ""
+      changed_when: true
+
+    - name: Load Kubernetes kernel modules now
+      community.general.modprobe:
+        name: "{{ item }}"
+        state: present
+        persistent: present
+      loop:
+        - br_netfilter
+        - overlay
+
+    - name: Enable Kubernetes networking settings
+      ansible.posix.sysctl:
+        name: "{{ item }}"
+        value: 1
+        sysctl_file: "/etc/sysctl.d/kubernetes.conf"
+        state: present
+        reload: true
+      loop:
+        - net.bridge.bridge-nf-call-iptables
+        - net.ipv4.ip_forward
+        - net.bridge.bridge-nf-call-ip6tables
