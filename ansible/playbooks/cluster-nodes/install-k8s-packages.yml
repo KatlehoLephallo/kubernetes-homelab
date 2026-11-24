@@ -1,0 +1,42 @@
+---
+- name: Install Kubernetes packages on cluster nodes
+  hosts: nodes
+
+  tasks:
+    - name: Block Kubernetes, CRI-O and cri-tools packages from normal dnf upgrades
+      community.general.ini_file:
+        owner: root
+        group: root
+        mode: "0644"
+        path: /etc/dnf/dnf.conf
+        section: main
+        option: excludepkgs
+        value: "kubernetes*,cri-o*,cri-tools*"
+        no_extra_spaces: true
+
+    - name: Install CRI-O and Kubernetes packages (ignoring the dnf excludes for this task only)
+      ansible.builtin.command:
+        argv:
+          - dnf
+          - install
+          - -y
+          - --setopt=disable_excludes=main
+          - "kubernetes{{ k8s_version }}"
+          - "kubernetes{{ k8s_version }}-kubeadm"
+          - "kubernetes{{ k8s_version }}-client"
+          - "cri-o{{ k8s_version }}"
+          - "cri-tools{{ k8s_version }}"
+          - container-selinux
+      register: k8s_packages
+      changed_when: "'Nothing to do' not in k8s_packages.stdout"
+
+    - name: Enable and start CRI-O service
+      ansible.builtin.systemd_service:
+        name: crio
+        enabled: true
+        state: started
+
+    - name: Enable kubelet service
+      ansible.builtin.systemd_service:
+        name: kubelet
+        enabled: true
