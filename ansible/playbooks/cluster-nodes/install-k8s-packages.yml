@@ -40,3 +40,20 @@
       ansible.builtin.systemd_service:
         name: kubelet
         enabled: true
+
+    - name: Copy containers-common defaults to /etc (workaround for CRI-O 1.36 on Fedora 45)
+      ansible.builtin.copy:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+        remote_src: true
+        mode: preserve
+      loop:
+        - { src: /usr/share/containers/policy.json, dest: /etc/containers/policy.json }
+        - { src: /usr/share/containers/registries.conf, dest: /etc/containers/registries.conf }
+        - { src: /usr/share/containers/registries.conf.d/, dest: /etc/containers/registries.conf.d/ }
+      notify: Restart crio
+  handlers:
+    - name: Restart crio
+      ansible.builtin.systemd_service:
+        name: crio
+        state: restarted

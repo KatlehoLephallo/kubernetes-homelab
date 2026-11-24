@@ -61,7 +61,7 @@ ansible nodes -a "grep excludepkgs /etc/dnf/dnf.conf"
 ansible nodes -m ansible.builtin.shell -a "dnf upgrade --assumeno 2>&1 | grep -Ei 'kubernetes|cri-o|cri-tools' || echo 'PASS: none listed'"
 
 # CRI-O running and ready
-ansible nodes -m ansible.builtin.shell -a "systemctl is-active crio && crictl info
+ansible nodes -m ansible.builtin.shell -a "systemctl is-active crio && crictl info"
 
 # kubelet enabled
 ansible nodes -a "systemctl is-enabled kubelet"

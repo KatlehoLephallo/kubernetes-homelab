@@ -11,3 +11,4 @@
           {% for node in groups['nodes'] %}
           {{ hostvars[node].ansible_host }} {{ node }}
           {% endfor %}
+          {{ hostvars['cp1'].ansible_host }} {{ k8s_api_endpoint_name }}
