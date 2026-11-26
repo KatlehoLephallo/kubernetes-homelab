@@ -36,6 +36,16 @@
         enabled: true
         state: started
 
+    - name: Remove CRI-O's default CNI configs
+      ansible.builtin.file:
+        path: /etc/cni/net.d/{{ item }}
+        state: absent
+      loop:
+        - 100-crio-bridge.conflist
+        - 110-crio-ipv4-bridge.conflist.disabled
+        - 200-loopback.conflist
+      notify: Restart crio
+
     - name: Enable kubelet service
       ansible.builtin.systemd_service:
         name: kubelet
