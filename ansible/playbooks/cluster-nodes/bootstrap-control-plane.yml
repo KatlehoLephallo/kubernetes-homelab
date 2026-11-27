@@ -1,0 +1,63 @@
+---
+- name: Bootstrap the control plane node
+  hosts: control_plane
+
+  tasks:
+    - name: Get Installed kubeadm version
+      ansible.builtin.command: kubeadm version -o short
+      register: kubeadm_version_cmd
+      changed_when: false
+
+    - name: Save it as kubeadm_version
+      ansible.builtin.set_fact:
+        kubeadm_version: "{{ kubeadm_version_cmd.stdout }}"
+
+    - name: Render kubeadm config file
+      ansible.builtin.template:
+        src: kubeadm-config.yml.j2
+        dest: /root/kubeadm-config.yml
+        owner: root
+        group: root
+        mode: "0600"
+
+    - name: Check whether the cluster is already initialized
+      ansible.builtin.stat:
+        path: /etc/kubernetes/admin.conf
+      register: admin_conf
+
+    - name: Check whether the API server is healthy
+      ansible.builtin.command: kubectl --kubeconfig=/etc/kubernetes/admin.conf get --raw=/readyz --request-timeout=10s
+      register: api_ready
+      changed_when: false
+      failed_when: false
+      when: admin_conf.stat.exists
+
+    - name: Stop if coontrol-plane looks half-built
+      ansible.builtin.fail:
+        msg: /etc/kubernetes/admin.conf exists but the API server is not healthy. Check the control plane by hand, or run kubeadm reset before retrying.
+      when:
+        - admin_conf.stat.exists
+        - api_ready.rc != 0
+
+    - name: Initialize the control plane
+      ansible.builtin.command: kubeadm init --config /root/kubeadm-config.yml
+      register: kubeadm_init
+      changed_when: true
+      when: not admin_conf.stat.exists
+
+    - name: Create .kube folder for core
+      ansible.builtin.file:
+        path: /home/core/.kube
+        state: directory
+        owner: core
+        group: core
+        mode: "0700"
+
+    - name: Give core a copy of admin.conf as its kubeconfig
+      ansible.builtin.copy:
+        src: /etc/kubernetes/admin.conf
+        dest: /home/core/.kube/config
+        remote_src: true
+        owner: core
+        group: core
+        mode: "0600"
